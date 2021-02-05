@@ -1,23 +1,21 @@
-from __future__ import division
-import sys, os
+import os
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 import numpy as np
-from ROOT import TFile, TTree
 import tensorflow as tf
-from keras.models import Model, Sequential, load_model
-from keras.layers import Input, Dense, Activation, Dropout, add
 import pandas as pd
 import matplotlib.pyplot as plt
-from keras.utils import to_categorical
-from plot_confusion_matrix import plot_confusion_matrix
+from myutils import *
 
 trainInput = "../SNN_sample/ttbar.h5"
-trainOutput = "keras_ttbar_epoch_30"
+data = pd.read_hdf(trainInput)
+
+epochs = 3
+trainOutput = "keras_ttbar_epoch"+str(epochs)
+trainOutput = "test"
 try: os.mkdir(trainOutput)
 except: pass
-data = pd.read_hdf(trainInput)
 
 # make the number of events for each category equal
 pd_tth = data[data['category'] == 0].sample(n=40330)
@@ -29,7 +27,7 @@ pd_ttc = data[data['category'] == 4].sample(n=40330)
 pd_ttcc = data[data['category'] == 5].sample(n=40330)
 
 # merge data and reset index
-pd_data = pd.concat([pd_tth, pd_ttlf, pd_ttb, pd_ttbb, pd_ttc, pd_ttcc], ignore_index=True)
+pd_data = pd.concat([pd_tth, pd_ttlf, pd_ttb, pd_ttbb, pd_ttc, pd_ttcc])
 pd_data = pd_data.sample(frac=1).reset_index(drop=True)
 
 # pickup only interesting variables
@@ -50,20 +48,15 @@ pd_train_data = pd_data.filter(items = variables)
 train_out = np.array( pd_train_out )
 train_data = np.array( pd_train_data )
 
-numbertr=len(train_out)
-
-print numbertr
-
-trainnb=0.8 # Fraction used for training
+numbertr = len(train_out)
+trainlen = int(0.8*numbertr) # Fraction used for training
 
 # Splitting between training set and cross-validation set
-valid_data=train_data[int(trainnb*numbertr):numbertr,0::]
-valid_data_out=train_out[int(trainnb*numbertr):numbertr]
-valid_data_out = to_categorical(valid_data_out)
+valid_data=train_data[trainlen:,0::]
+valid_data_out=train_out[trainlen:]
 
-train_data_out=train_out[0:int(trainnb*numbertr)]
-train_data=train_data[0:int(trainnb*numbertr),0::]
-train_data_out = to_categorical(train_data_out)
+train_data=train_data[:trainlen,0::]
+train_data_out=train_out[:trainlen]
 
 # model
 model = tf.keras.models.Sequential([
@@ -76,69 +69,28 @@ model = tf.keras.models.Sequential([
   tf.keras.layers.Dropout(0.1),
   tf.keras.layers.Dense(100, activation=tf.nn.relu),
   tf.keras.layers.Dropout(0.1),
- # tf.keras.layers.Dense(100, activation=tf.nn.relu),
- # tf.keras.layers.Dropout(0.1),
- # tf.keras.layers.Dense(300, activation=tf.nn.relu),
- # tf.keras.layers.Dropout(0.1),
- # tf.keras.layers.Dense(300, activation=tf.nn.relu),
- # tf.keras.layers.Dropout(0.1),
- # tf.keras.layers.Dense(300, activation=tf.nn.relu),
- # tf.keras.layers.Dropout(0.1),
- # tf.keras.layers.Dense(100, activation=tf.nn.relu),
- # tf.keras.layers.Dropout(0.1),
- # tf.keras.layers.Dense(100, activation=tf.nn.relu),
- # tf.keras.layers.Dropout(0.1),
-  tf.keras.layers.Dense(6, activation=tf.nn.softmax)
+  tf.keras.layers.Dense(len(class_names), activation=tf.nn.softmax)
 ])
 
-#modelshape = "10L_300N"
 batch_size = 512
-epochs = 30
-model_output_name = 'model_ttbar_%dE' %(epochs)
 
-model.compile(loss='categorical_crossentropy',
+model.compile(loss='sparse_categorical_crossentropy',
               optimizer = 'adam',
-              metrics=['accuracy', 'categorical_accuracy'])
+              metrics=['accuracy', 'sparse_categorical_accuracy'])
 hist = model.fit(train_data, train_data_out, batch_size=batch_size, epochs=epochs, validation_data=(valid_data,valid_data_out))
-
-    #using only fraction of data
-    #evaluate = model.predict( valid_data ) 
 
 model.summary()
 
-pred = model.predict(valid_data)
-pred = np.argmax(pred, axis=1)
-#pred = to_categorical(pred)
-comp = np.argmax(valid_data_out, axis=1)
+pred = np.argmax(model.predict(valid_data), axis=1)
+comp = np.reshape(valid_data_out,(-1))
 
 acc = 100 * np.mean( pred == comp )
-print (str(acc))
 
 plot_confusion_matrix(comp, pred, classes=class_names,
-                    title='Confusion matrix, without normalization, acc=%.2f'%acc)
-plt.savefig(trainOutput+"/confusion_matrix.pdf")
-plt.gcf().clear()
+                    title='Confusion matrix, without normalization, acc=%.2f'%acc, savename=trainOutput+"/confusion_matrix.pdf")
 
 plot_confusion_matrix(comp, pred, classes=class_names, normalize=True,
-                    title='Normalized confusion matrix, acc=%.2f'%acc)
-plt.savefig(trainOutput+"/norm_confusion_matrix.pdf")
-plt.gcf().clear()
+                    title='Normalized confusion matrix, acc=%.2f'%acc, savename=trainOutput+"/norm_confusion_matrix.pdf")
 
-print("Plotting scores")
-plt.plot(hist.history['categorical_accuracy'])
-plt.plot(hist.history['val_categorical_accuracy'])
-plt.title('Model accuracy')
-plt.ylabel('Accuracy')
-plt.xlabel('Epoch')
-plt.legend(['Train','Test'], loc='lower right')
-plt.savefig(os.path.join(trainOutput+'/fig_score_acc.pdf'))
-plt.gcf().clear()
-
-plt.plot(hist.history['loss'])
-plt.plot(hist.history['val_loss'])
-plt.ylabel('Loss')
-plt.xlabel('Epoch')
-plt.legend(['Train','Test'],loc='upper right')
-plt.savefig(os.path.join(trainOutput+'/fig_score_loss.pdf'))
-plt.gcf().clear()
+plot_performance(hist=hist, savedir=trainOutput)
 
