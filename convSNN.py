@@ -20,7 +20,7 @@ import nengo_loihi
 import pandas as pd
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from plot_confusion_matrix import plot_confusion_matrix
+from myutils import *
 nengo_loihi.set_defaults()
 
 def conv_layer(x, *args, activation=True, **kwargs):
