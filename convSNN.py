@@ -6,8 +6,8 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 import numpy as np
 trainInput = "../SNN_sample/ttbar.h5"
 
-epoch = 4
-trainOutput="./convSNN_epoch"+str(epoch)
+epoch = 2
+trainOutput="./convSNN_ttbar_4_epoch"+str(epoch)
 try: os.mkdir(trainOutput)
 except: pass
 
@@ -48,18 +48,37 @@ def classification_accuracy(y_true, y_pred):
 
 # set up training data
 data = pd.read_hdf(trainInput)
+##make the number of events for each category equal
+#pd_tth = data[data['category'] == 0].sample(n=40330)
+##pd_tth = data[data['category'] == 0].sample(n=0) #without tth
+#pd_ttlf = data[data['category'] == 1].sample(n=40330)
+#pd_ttb = data[data['category'] == 2].sample(n=40330)
+#pd_ttbb = data[data['category'] == 3].sample(n=40330)
+#pd_ttc = data[data['category'] == 4].sample(n=40330)
+#pd_ttcc = data[data['category'] == 5].sample(n=40330)
+#
+## merge data and reset index
+#pd_data = pd.concat([pd_tth, pd_ttlf, pd_ttb, pd_ttbb, pd_ttc, pd_ttcc], ignore_index=True)
+#data = pd_data.sample(frac=1).reset_index(drop=True)
+
 # make the number of events for each category equal
-pd_tth = data[data['category'] == 0].sample(n=40330)
-#pd_tth = data[data['category'] == 0].sample(n=0) #without tth
-pd_ttlf = data[data['category'] == 1].sample(n=40330)
-pd_ttb = data[data['category'] == 2].sample(n=40330)
-pd_ttbb = data[data['category'] == 3].sample(n=40330)
-pd_ttc = data[data['category'] == 4].sample(n=40330)
-pd_ttcc = data[data['category'] == 5].sample(n=40330)
+pd_tth = data[data['category'] == 0].sample(n=70000)
+pd_ttlf = data[data['category'] == 1].sample(n=70000)
+pd_ttb = data[data['category'] == 2].sample(n=35000)
+pd_ttbb = data[data['category'] == 3].sample(n=35000)
+pd_ttc = data[data['category'] == 4].sample(n=35000)
+pd_ttcc = data[data['category'] == 5].sample(n=35000)
+
+pd_ttbb = pd.concat([pd_ttb, pd_ttbb])
+pd_ttcc = pd.concat([pd_ttc, pd_ttcc])
+
+pd_ttbb['category'] = 2
+pd_ttcc['category'] = 3
 
 # merge data and reset index
-pd_data = pd.concat([pd_tth, pd_ttlf, pd_ttb, pd_ttbb, pd_ttc, pd_ttcc], ignore_index=True)
-data = pd_data.sample(frac=1).reset_index(drop=True)
+pd_data = pd.concat([pd_tth, pd_ttlf, pd_ttbb, pd_ttcc], ignore_index=True)
+pd_data = pd_data.sample(frac=1).reset_index(drop=True)
+
 
 variables = ['ngoodjets', 'nbjets_m', 'nbjets_t', 'ncjets_l',
         'ncjets_m', 'ncjets_t', 'deltaR_j12', 'deltaR_j34',
@@ -74,6 +93,7 @@ variables = ['ngoodjets', 'nbjets_m', 'nbjets_t', 'ncjets_l',
 #        'sortedbjet_mass1', 'sortedbjet_mass2', 'sortedbjet_mass3', 'sortedbjet_mass4',
 ]
 class_names = ["tth", "ttlf", "ttb", "ttbb", "ttc", "ttcc"]
+class_names = ["tth", "ttlf", "ttbb", "ttcc"]
 
 nVariables, nClass = len(variables), len(class_names)
 
@@ -198,7 +218,7 @@ with nengo_loihi.Simulator(net, dt=dt, precompute=False, progress_bar=False) as 
     # if running on Loihi, increase the max input spikes per step
     if 'loihi' in sim.sims:
         sim.sims['loihi'].snip_max_spikes_per_step = 120
-#    class_names = ["ttlf", "ttb", "ttbb", "ttc", "ttcc"]
+    #class_names = ["ttlf", "ttb", "ttbb", "ttc", "ttcc"]
 
     # run the simulation on Loihi
     sim.run(n_presentations * presentation_time)
@@ -234,13 +254,11 @@ with nengo_loihi.Simulator(net, dt=dt, precompute=False, progress_bar=False) as 
 
     # Plot non-normalized confusion matrix
     plot_confusion_matrix(correct, predicted, classes=class_names,
-                          title='Confusion matrix, without normalization, acc=%.2f'%acc)
-    plt.savefig(trainOutput+"/confusion_matrix.pdf")
+                    title='Confusion matrix, without normalization, acc=%.2f'%acc, savename=trainOutput+"/confusion_matrix.pdf")
 
     # Plot normalized confusion matrix
     plot_confusion_matrix(correct, predicted, classes=class_names, normalize=True,
-                          title='Normalized confusion matrix, acc=%.2f'%acc)
-    plt.savefig(trainOutput+"/norm_confusion_matrix.pdf")
+                    title='Normalized confusion matrix, acc=%.2f'%acc, savename=trainOutput+"/norm_confusion_matrix.pdf")
 
 for i in range(5):
     n_plots = 5
