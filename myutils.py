@@ -1,6 +1,7 @@
 
 import os
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
 from sklearn.utils.multiclass import unique_labels
@@ -60,9 +61,33 @@ def plot_performance(hist, savedir="./"):
 
     plt.plot(hist.history['loss'])
     plt.plot(hist.history['val_loss'])
+    plt.title('Model loss')
     plt.ylabel('Loss')
     plt.xlabel('Epoch')
     plt.legend(['Train','Test'],loc='upper right')
     plt.savefig(os.path.join(savedir+'/fig_score_loss.pdf'))
     plt.gcf().clear()
 
+def plot_output_dist(train, test, savedir="./"):
+    sigtrain = np.array(train[train["True"]==1]["Pred"])
+    bkgtrain = np.array(train[train["True"]==0]["Pred"])
+    sigtest = np.array(test[test["True"]==1]["Pred"])
+    bkgtest = np.array(test[test["True"]==0]["Pred"])
+    bins=40
+    scores = [sigtrain, sigtest, bkgtrain, bkgtest]
+    print (scores)
+    low = min(np.min(d) for d in scores)
+    high = max(np.max(d) for d in scores)
+
+    # test is filled
+    plt.hist(sigtest, color="b", alpha=0.5, range=(low, high), bins=bins, histtype="stepfilled", density=True, label="sig test")
+    plt.hist(bkgtest, color="r", alpha=0.5, range=(low, high), bins=bins, histtype="stepfilled", density=True, label="bkg test")
+    # train is dotted
+    plt.hist(sigtrain, color="b", range=(low, high), bins=bins, histtype="step", density=True, label="sig train")
+    plt.hist(bkgtrain, color="r", range=(low, high), bins=bins, histtype="step", density=True, label="bkg train")
+
+    plt.title("Output distribution")
+    plt.ylabel("entry")
+    plt.xlabel("probability")
+    plt.savefig(os.path.join(savedir+'/fig_output_dist.pdf'))
+    plt.gcf().clear()
