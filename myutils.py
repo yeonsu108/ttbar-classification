@@ -59,8 +59,8 @@ def plot_performance(hist, savedir="./"):
     plt.savefig(os.path.join(savedir+'/fig_score_acc.pdf'))
     plt.gcf().clear()
 
-    plt.plot(hist.history['loss'])
-    plt.plot(hist.history['val_loss'])
+    plt.plot(hist.history['loss'][:])
+    plt.plot(hist.history['val_loss'][:])
     plt.title('Model loss')
     plt.ylabel('Loss')
     plt.xlabel('Epoch')
