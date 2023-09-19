@@ -1,0 +1,8 @@
+external/
+classes/
+ana*
+*.root
+*/*.root
+*.pdf
+*/*.pdf
+*/*/*.pdf

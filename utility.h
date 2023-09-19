@@ -43,7 +43,7 @@ ints SelectAddQuark(ints pid, ints m1, ints m2, ints d1, ints d2){
     ints out;
     for (int i=0; i<int(pid.size()); i++){
         if (abs(pid[i]) < 1 || abs(pid[i]) > 6) out.push_back(0);
-        else if (pid[i] == pid[d1[i]] || pid[i] == pid[d2[i]]) out.push_back(0);
+        else if (pid[i] == pid[d1[i]] || pid[i] == pid[d2[i]]) out.push_back(0); // particle should be last
         else if (isFromTop(pid, m1, m2, i)) out.push_back(0);
         else out.push_back(1);
     }
