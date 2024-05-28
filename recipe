@@ -1,0 +1,26 @@
+1. ana_ttbar_df.C
+    use:
+        - run one file: root -l -b -q 'ana_ttbar_df.C("/filepath/infile.root", "./filepath/outfile.root", njet, nbjet)'
+        - scripts: scrips/run_ana.sh (Please modify file path!) 
+    input: delphes root files
+        - apply gen-level cut and object selection
+        - define some variables
+    output: root files with tree named Delphes
+
+2. bookhists.py
+    use: python bookhists.py inputdir
+    input: root files with Delphes tree, outputs from ana_ttbar_df.C
+    output: 
+        - histogram root files
+        - save dnn input variables at dnn_input tree
+
+3. plots.py
+    use: python plots.py inputdir lepton_channel //lepton_channel: mu or elec
+    input: histogram root files, outputs from bookhists.py
+    output:
+        - plots as pdf format
+
+4. train.py
+    use: python train.py inputdir
+    input: root files after the event selections, outputs from bookhists.py
+    output: dnn outputs 

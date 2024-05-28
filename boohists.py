@@ -1,7 +1,7 @@
-# how to use: python bookhists.py inputdir lepton_channel
+# how to use: python bookhists.py inputdir
 # root files should be in inputdir/
-# lepton_channel: mu or elec
-# output files (histogram root files) are generated at inputdir/hist/
+# root files should be output files of ana_ttbar_df.C
+# output files (histogram root files) will be generated at inputdir/hist/
 
 import ROOT
 import numpy as np
@@ -9,156 +9,210 @@ import os, sys
 ROOT.gStyle.SetOptStat(0)
 
 # RDF
-TreeName = "Delphes"
+TreeName = "dnn_input"
 
-# Modify!! 
 indir = sys.argv[1]
 print(indir)
 outdir = indir+"/hist/"
 if not os.path.exists(outdir):
     os.makedirs(outdir)
-lep = sys.argv[2]    # mu or elec
 
-tthbb = ROOT.RDataFrame(TreeName, indir+"/tthbblj*.root")
-ttbb  = ROOT.RDataFrame(TreeName, indir+"/ttbblj*.root")
-hist_tthbb = ROOT.TFile.Open(outdir+"hist_tthbb_"+lep+".root", "RECREATE")
-hist_ttbb  = ROOT.TFile.Open(outdir+"hist_ttbb_"+lep+".root", "RECREATE")
+tthbb = ROOT.RDataFrame(TreeName, indir+"/tthbb*.root")
+ttbb  = ROOT.RDataFrame(TreeName, indir+"/ttbb*.root")
+ttcc  = ROOT.RDataFrame(TreeName, indir+"/ttcc*.root")
+ttjj  = ROOT.RDataFrame(TreeName, indir+"/ttjj*.root")
 
-def add1Dhist(hists, df, outfile, flag="_S0"):
+
+def add1Dhist(hists, df, outfile, flag=""):
     outfile.cd()
     for h in hists:
         hist = df.Histo1D(ROOT.RDF.TH1DModel(h[0]+flag, h[1], h[2], h[3], h[4]), h[5])
         hist.Write()
         print (hist)
 
-def addhists(df, outfile):
-    hist_S0 = [
-        ("njet", "Jet multiplicity", 14, 0, 14, "njet"),
-        ("nbjet", "bJet multiplicity", 10, 0, 10, "nbjet"),
-        ("nmuon", "Muon multiplicity", 3, 0, 3, "nmuon"),
-        ("nelectron", "Electron multiplicity", 3, 0, 3, "nelectron"),
-        ("nlepton", "lepton multiplicity", 3, 0, 3, "nlepton"),
+def addhists(df, outfile, lep="mu"):
+    hist = [
+        ("njets", "Jet multiplicity", 10, 4, 14, "njets"),
+        ("nbjets", "bJet multiplicity", 8, 2, 10, "nbjets"),
+        #("ncjets", "bJet multiplicity", 8, 0, 8, "ncjets"),
+        ("nMuon", "Muon multiplicity", 3, 0, 3, "nMuon"),
+        ("nElectron", "Electron multiplicity", 3, 0, 3, "nElectron"),
+        ("nLepton", "lepton multiplicity", 3, 0, 3, "nLepton"),
+        ("MET_px", "MET px", 30, 0, 300, "MET_px"),
+        ("MET_py", "MET py", 30, 0, 300, "MET_py"),
         ("MET_met", "MET", 30, 0, 300, "MET_met"),
         ("MET_eta", "MET eta", 20, -4, 4, "MET_eta"),
         ("MET_phi", "MET phi", 20, -4, 4, "MET_phi"),
-    ]
-    add1Dhist(hist_S0, df, outfile, "_S0")
+        ("Lepton_pt",  "Lepton pt",  30,  0, 300, "Lepton_pt" ),
+        ("Lepton_eta", "Lepton eta", 20, -4,   4, "Lepton_eta"),
+        ("Lepton_phi", "Lepton phi", 20, -4,   4, "Lepton_phi"),
+        ("Lepton_e",   "Lepton e",   30,  0, 300, "Lepton_e"  ),
 
-
-    if lep == "mu":
-        tmp = "Muon"
-        df = df.Filter("nmuon==1 && nelectron==0")
-    else:
-        tmp = "Electron"
-        df = df.Filter("nmuon==0 && nelectron==1")
-    hist_S1 = hist_S0+[
-        (tmp+"_pt",  tmp+" pt",  30,  0, 300, tmp+"_pt" ),
-        (tmp+"_eta", tmp+" eta", 20, -4,   4, tmp+"_eta"),
-        (tmp+"_phi", tmp+" phi", 20, -4,   4, tmp+"_phi"),
-        (tmp+"_e",   tmp+" e",   30,  0, 300, tmp+"_e"  ),
-    ]
-
-    add1Dhist(hist_S1, df, outfile, "_S1")
-
-    hist_S2jet1 = hist_S1 + [
         ("Jet1_pt",  "Jet1 pt",  40,  0, 400, "Jet1_pt" ),
         ("Jet1_eta", "Jet1 eta", 40, -4,   4, "Jet1_eta"),
         ("Jet1_phi", "Jet1 phi", 40, -4,   4, "Jet1_phi"),
-        ("Jet1_mass", "Jet1 mass", 40,  0, 400, "Jet1_mass"),
-    ]
-    df = df.Filter("njet>=1") \
-           .Define("Jet1_pt", "Jet_pt[0]").Define("Jet1_eta", "Jet_eta[0]").Define("Jet1_phi", "Jet_phi[0]").Define("Jet1_mass", "Jet_mass[0]")
-    add1Dhist(hist_S2jet1, df, outfile, "_S2jet1")
-
-    hist_S2jet2 = hist_S2jet1 + [
+        ("Jet1_e", "Jet1 energy", 20,  0, 200, "Jet1_e"),
+        ("Jet1_btag", "Jet1 btag", 2,  0, 2, "Jet1_btag"),
         ("Jet2_pt",  "Jet2 pt",  40,  0, 400, "Jet2_pt" ),
         ("Jet2_eta", "Jet2 eta", 40, -4,   4, "Jet2_eta"),
         ("Jet2_phi", "Jet2 phi", 40, -4,   4, "Jet2_phi"),
-        ("Jet2_mass", "Jet2 mass", 40,  0, 400, "Jet2_mass"),
-    ]
-    df = df.Filter("njet>=2") \
-           .Define("Jet2_pt", "Jet_pt[1]").Define("Jet2_eta", "Jet_eta[1]").Define("Jet2_phi", "Jet_phi[1]").Define("Jet2_mass", "Jet_mass[1]")
-    add1Dhist(hist_S2jet2, df, outfile, "_S2jet2")
-
-    hist_S2jet3 = hist_S2jet2 + [
+        ("Jet2_btag", "Jet2 btag", 2,  0, 2, "Jet2_btag"),
+        ("Jet2_e", "Jet2 energy", 20,  0, 200, "Jet2_e"),
         ("Jet3_pt",  "Jet3 pt",  40,  0, 400, "Jet3_pt" ),
         ("Jet3_eta", "Jet3 eta", 40, -4,   4, "Jet3_eta"),
         ("Jet3_phi", "Jet3 phi", 40, -4,   4, "Jet3_phi"),
-        ("Jet3_mass", "Jet3 mass", 40,  0, 400, "Jet3_mass"),
-    ]
-    df = df.Filter("njet>=3") \
-           .Define("Jet3_pt", "Jet_pt[2]").Define("Jet3_eta", "Jet_eta[2]").Define("Jet3_phi", "Jet_phi[2]").Define("Jet3_mass", "Jet_mass[2]")
-    add1Dhist(hist_S2jet3, df, outfile, "_S2jet3")
-
-    hist_S2jet4 = hist_S2jet3 + [
+        ("Jet3_e", "Jet3 energy", 20,  0, 200, "Jet3_e"),
+        ("Jet3_btag", "Jet3 btag", 2,  0, 2, "Jet3_btag"),
         ("Jet4_pt",  "Jet4 pt",  40,  0, 400, "Jet4_pt" ),
         ("Jet4_eta", "Jet4 eta", 40, -4,   4, "Jet4_eta"),
         ("Jet4_phi", "Jet4 phi", 40, -4,   4, "Jet4_phi"),
-        ("Jet4_mass", "Jet4 mass", 40,  0, 400, "Jet4_mass"),
-    ]
-    df = df.Filter("njet>=4") \
-           .Define("Jet4_pt", "Jet_pt[3]").Define("Jet4_eta", "Jet_eta[3]").Define("Jet4_phi", "Jet_phi[3]").Define("Jet4_mass", "Jet_mass[3]")
-    add1Dhist(hist_S2jet4, df, outfile, "_S2jet4")
+        ("Jet4_e", "Jet4 energy", 20,  0, 200, "Jet4_e"),
+        ("Jet4_btag", "Jet4 btag", 2,  0, 2, "Jet4_btag"),
 
-    hist_S2jet5 = hist_S2jet4 + [
-        ("Jet5_pt",  "Jet5 pt",  40,  0, 400, "Jet5_pt" ),
-        ("Jet5_eta", "Jet5 eta", 40, -4,   4, "Jet5_eta"),
-        ("Jet5_phi", "Jet5 phi", 40, -4,   4, "Jet5_phi"),
-        ("Jet5_mass", "Jet5 mass", 40,  0, 400, "Jet5_mass"),
-    ]
-    tmp = df.Filter("njet>=5") \
-            .Define("Jet5_pt", "Jet_pt[4]").Define("Jet5_eta", "Jet_eta[4]").Define("Jet5_phi", "Jet_phi[4]").Define("Jet5_mass", "Jet_mass[4]")
-    add1Dhist(hist_S2jet5, tmp, outfile, "_S2jet5")
+        ("bjet1_pt",  "bjet1 pt",  40,  0, 400, "bjet1_pt" ),
+        ("bjet1_eta", "bjet1 eta", 40, -4,   4, "bjet1_eta"),
+        ("bjet1_phi", "bjet1 phi", 40, -4,   4, "bjet1_phi"),
+        ("bjet1_e", "bjet1 energy", 20,  0, 200, "bjet1_e"),
+        ("bjet2_pt",  "bjet2 pt",  40,  0, 400, "bjet2_pt" ),
+        ("bjet2_eta", "bjet2 eta", 40, -4,   4, "bjet2_eta"),
+        ("bjet2_phi", "bjet2 phi", 40, -4,   4, "bjet2_phi"),
+        ("bjet2_e", "bjet2 energy", 20,  0, 200, "bjet2_e"),
 
-    hist_S2jet6 = hist_S2jet5 + [
-        ("Jet6_pt",  "Jet6 pt",  40,  0, 400, "Jet6_pt" ),
-        ("Jet6_eta", "Jet6 eta", 40, -4,   4, "Jet6_eta"),
-        ("Jet6_phi", "Jet6 phi", 40, -4,   4, "Jet6_phi"),
-        ("Jet6_mass", "Jet6 mass", 40,  0, 400, "Jet6_mass"),
-    ]
-    tmp = tmp.Filter("njet>=6") \
-             .Define("Jet6_pt", "Jet_pt[5]").Define("Jet6_eta", "Jet_eta[5]").Define("Jet6_phi", "Jet_phi[5]").Define("Jet6_mass", "Jet_mass[5]")
-    add1Dhist(hist_S2jet6, tmp, outfile, "_S2jet6")
+        ("selbjet1_pt",  "selbjet1 pt",  40,  0, 400, "selbjet1_pt" ),
+        ("selbjet1_eta", "selbjet1 eta", 40, -4,   4, "selbjet1_eta"),
+        ("selbjet1_phi", "selbjet1 phi", 40, -4,   4, "selbjet1_phi"),
+        ("selbjet1_e", "selbjet1 energy", 20,  0, 200, "selbjet1_e"),
+        ("selbjet2_pt",  "selbjet2 pt",  40,  0, 400, "selbjet2_pt" ),
+        ("selbjet2_eta", "selbjet2 eta", 40, -4,   4, "selbjet2_eta"),
+        ("selbjet2_phi", "selbjet2 phi", 40, -4,   4, "selbjet2_phi"),
+        ("selbjet2_e", "selbjet2 energy", 20,  0, 200, "selbjet2_e"),
 
-    hist_S3bjet1 = hist_S2jet4 + [
-        ("bJet1_pt",  "bJet1 pt",  40,  0, 400, "bJet1_pt" ),
-        ("bJet1_eta", "bJet1 eta", 40, -4,   4, "bJet1_eta"),
-        ("bJet1_phi", "bJet1 phi", 40, -4,   4, "bJet1_phi"),
-        ("bJet1_mass", "bJet1 mass", 40,  0, 400, "bJet1_mass"),
-    ]
-    df = df.Filter("nbjet>=1") \
-           .Define("bJet1_pt", "bJet_pt[0]").Define("bJet1_eta", "bJet_eta[0]").Define("bJet1_phi", "bJet_phi[0]").Define("bJet1_mass", "bJet_mass[0]")
-    add1Dhist(hist_S3bjet1, df, outfile, "_S3bjet1")
+        ("bbdR", "dR(bb)", 40, -4, 4, "bbdR"),
+        ("bbdEta", "dEta(bb)", 40, -4, 4, "bbdEta"),
+        ("bbdPhi", "dPhi(bb)", 40, -4, 4, "bbdPhi"),
+        ("bbPt", "pT(bb)", 40, 0, 400, "bbPt"),
+        ("bbEta", "Eta(bb)", 40, -4, 4, "bbEta"),
+        ("bbPhi", "Phi(bb)", 40, -4, 4, "bbPhi"),
+        ("bbMass", "M(bb)", 20, 0, 200, "bbMass"),
+        ("bbHt", "Ht(bb)", 40, 0, 400, "bbPt"),
+        ("bbMt", "Mt(bb)", 40, 0, 400, "bbPt"),
 
-    hist_S3bjet2 = hist_S3bjet1 + [
-        ("bJet2_pt",  "bJet2 pt",  40,  0, 400, "bJet2_pt" ),
-        ("bJet2_eta", "bJet2 eta", 40, -4,   4, "bJet2_eta"),
-        ("bJet2_phi", "bJet2 phi", 40, -4,   4, "bJet2_phi"),
-        ("bJet2_mass", "bJet2 mass", 40,  0, 400, "bJet2_mass"),
-    ]
-    df = df.Filter("njet>=2") \
-           .Define("bJet2_pt", "bJet_pt[1]").Define("bJet2_eta", "bJet_eta[1]").Define("bJet2_phi", "bJet_phi[1]").Define("bJet2_mass", "bJet_mass[1]")
-    add1Dhist(hist_S3bjet2, df, outfile, "_S3bjet2")
+        ("nub1dR", "dR(nub1)", 40, -4, 4, "nub1dR"),
+        ("nub1dEta", "dEta(nub1)", 40, -4, 4, "nub1dEta"),
+        ("nub1dPhi", "dPhi(nub1)", 40, -4, 4, "nub1dPhi"),
+        ("nub1Pt", "pT(nub1)", 40, 0, 400, "nub1Pt"),
+        ("nub1Eta", "Eta(nub1)", 40, -4, 4, "nub1Eta"),
+        ("nub1Phi", "Phi(nub1)", 40, -4, 4, "nub1Phi"),
+        ("nub1Mass", "M(nub1)", 20, 0, 200, "nub1Mass"),
+        ("nub1Ht", "Ht(nub1)", 40, 0, 400, "nub1Pt"),
+        ("nub1Mt", "Mt(nub1)", 40, 0, 400, "nub1Pt"),
 
-    hist_S3bjet3 = hist_S3bjet2 + [
-        ("bJet3_pt",  "bJet3 pt",  40,  0, 400, "bJet3_pt" ),
-        ("bJet3_eta", "bJet3 eta", 40, -4,   4, "bJet3_eta"),
-        ("bJet3_phi", "bJet3 phi", 40, -4,   4, "bJet3_phi"),
-        ("bJet3_mass", "bJet3 mass", 40,  0, 400, "bJet3_mass"),
-    ]
-    df = df.Filter("nbjet>=3") \
-           .Define("bJet3_pt", "bJet_pt[2]").Define("bJet3_eta", "bJet_eta[2]").Define("bJet3_phi", "bJet_phi[2]").Define("bJet3_mass", "bJet_mass[2]")
-    add1Dhist(hist_S3bjet3, df, outfile, "_S3bjet3")
+        ("nub2dR", "dR(nub2)", 40, -4, 4, "nub2dR"),
+        ("nub2dEta", "dEta(nub2)", 40, -4, 4, "nub2dEta"),
+        ("nub2dPhi", "dPhi(nub2)", 40, -4, 4, "nub2dPhi"),
+        ("nub2Pt", "pT(nub2)", 40, 0, 400, "nub2Pt"),
+        ("nub2Eta", "Eta(nub2)", 40, -4, 4, "nub2Eta"),
+        ("nub2Phi", "Phi(nub2)", 40, -4, 4, "nub2Phi"),
+        ("nub2Mass", "M(nub2)", 20, 0, 200, "nub2Mass"),
+        ("nub2Ht", "Ht(nub2)", 40, 0, 400, "nub2Pt"),
+        ("nub2Mt", "Mt(nub2)", 40, 0, 400, "nub2Pt"),
 
-    hist_S3bjet4 = hist_S3bjet3 + [
-        ("bJet4_pt",  "bJet4 pt",  40,  0, 400, "bJet4_pt" ),
-        ("bJet4_eta", "bJet4 eta", 40, -4,   4, "bJet4_eta"),
-        ("bJet4_phi", "bJet4 phi", 40, -4,   4, "bJet4_phi"),
-        ("bJet4_mass", "bJet4 mass", 40,  0, 400, "bJet4_mass"),
-    ]
-    df = df.Filter("nbjet>=4") \
-           .Define("bJet4_pt", "bJet_pt[3]").Define("bJet4_eta", "bJet_eta[3]").Define("bJet4_phi", "bJet_phi[3]").Define("bJet4_mass", "bJet_mass[3]")
-    add1Dhist(hist_S3bjet4, df, outfile, "_S3bjet4")
+        ("nubbdR", "dR(nubb)", 40, -4, 4, "nubbdR"),
+        ("nubbdEta", "dEta(nubb)", 40, -4, 4, "nubbdEta"),
+        ("nubbdPhi", "dPhi(nubb)", 40, -4, 4, "nubbdPhi"),
+        ("nubbPt", "pT(nubb)", 40, 0, 400, "nubbPt"),
+        ("nubbEta", "Eta(nubb)", 40, -4, 4, "nubbEta"),
+        ("nubbPhi", "Phi(nubb)", 40, -4, 4, "nubbPhi"),
+        ("nubbMass", "M(nubb)", 20, 0, 200, "nubbMass"),
+        ("nubbHt", "Ht(nubb)", 40, 0, 400, "nubbPt"),
+        ("nubbMt", "Mt(nubb)", 40, 0, 400, "nubbPt"),
 
-addhists(tthbb, hist_tthbb)
-addhists(ttbb, hist_ttbb)
+        ("lb1dR", "dR(lb1)", 40, -4, 4, "lb1dR"),
+        ("lb1dEta", "dEta(lb1)", 40, -4, 4, "lb1dEta"),
+        ("lb1dPhi", "dPhi(lb1)", 40, -4, 4, "lb1dPhi"),
+        ("lb1Pt", "pT(lb1)", 40, 0, 400, "lb1Pt"),
+        ("lb1Eta", "Eta(lb1)", 40, -4, 4, "lb1Eta"),
+        ("lb1Phi", "Phi(lb1)", 40, -4, 4, "lb1Phi"),
+        ("lb1Mass", "M(lb1)", 20, 0, 200, "lb1Mass"),
+        ("lb1Ht", "Ht(lb1)", 40, 0, 400, "lb1Pt"),
+        ("lb1Mt", "Mt(lb1)", 40, 0, 400, "lb1Pt"),
+
+        ("lb2dR", "dR(lb2)", 40, -4, 4, "lb2dR"),
+        ("lb2dEta", "dEta(lb2)", 40, -4, 4, "lb2dEta"),
+        ("lb2dPhi", "dPhi(lb2)", 40, -4, 4, "lb2dPhi"),
+        ("lb2Pt", "pT(lb2)", 40, 0, 400, "lb2Pt"),
+        ("lb2Eta", "Eta(lb2)", 40, -4, 4, "lb2Eta"),
+        ("lb2Phi", "Phi(lb2)", 40, -4, 4, "lb2Phi"),
+        ("lb2Mass", "M(lb2)", 20, 0, 200, "lb2Mass"),
+        ("lb2Ht", "Ht(lb2)", 40, 0, 400, "lb2Pt"),
+        ("lb2Mt", "Mt(lb2)", 40, 0, 400, "lb2Pt"),
+
+        ("lbbdR", "dR(lbb)", 40, -4, 4, "lbbdR"),
+        ("lbbdEta", "dEta(lbb)", 40, -4, 4, "lbbdEta"),
+        ("lbbdPhi", "dPhi(lbb)", 40, -4, 4, "lbbdPhi"),
+        ("lbbPt", "pT(lbb)", 40, 0, 400, "lbbPt"),
+        ("lbbEta", "Eta(lbb)", 40, -4, 4, "lbbEta"),
+        ("lbbPhi", "Phi(lbb)", 40, -4, 4, "lbbPhi"),
+        ("lbbMass", "M(lbb)", 20, 0, 200, "lbbMass"),
+        ("lbbHt", "Ht(lbb)", 40, 0, 400, "lbbPt"),
+        ("lbbMt", "Mt(lbb)", 40, 0, 400, "lbbPt"),
+
+        ("Wjb1dR", "dR(Wjb1)", 40, -4, 4, "Wjb1dR"),
+        ("Wjb1dEta", "dEta(Wjb1)", 40, -4, 4, "Wjb1dEta"),
+        ("Wjb1dPhi", "dPhi(Wjb1)", 40, -4, 4, "Wjb1dPhi"),
+        ("Wjb1Pt", "pT(Wjb1)", 40, 0, 400, "Wjb1Pt"),
+        ("Wjb1Eta", "Eta(Wjb1)", 40, -4, 4, "Wjb1Eta"),
+        ("Wjb1Phi", "Phi(Wjb1)", 40, -4, 4, "Wjb1Phi"),
+        ("Wjb1Mass", "M(Wjb1)", 20, 0, 200, "Wjb1Mass"),
+        ("Wjb1Ht", "Ht(Wjb1)", 40, 0, 400, "Wjb1Pt"),
+        ("Wjb1Mt", "Mt(Wjb1)", 40, 0, 400, "Wjb1Pt"),
+
+        ("Wjb2dR", "dR(Wjb2)", 40, -4, 4, "Wjb2dR"),
+        ("Wjb2dEta", "dEta(Wjb2)", 40, -4, 4, "Wjb2dEta"),
+        ("Wjb2dPhi", "dPhi(Wjb2)", 40, -4, 4, "Wjb2dPhi"),
+        ("Wjb2Pt", "pT(Wjb2)", 40, 0, 400, "Wjb2Pt"),
+        ("Wjb2Eta", "Eta(Wjb2)", 40, -4, 4, "Wjb2Eta"),
+        ("Wjb2Phi", "Phi(Wjb2)", 40, -4, 4, "Wjb2Phi"),
+        ("Wjb2Mass", "M(Wjb2)", 20, 0, 200, "Wjb2Mass"),
+        ("Wjb2Ht", "Ht(Wjb2)", 40, 0, 400, "Wjb2Pt"),
+        ("Wjb2Mt", "Mt(Wjb2)", 40, 0, 400, "Wjb2Pt"),
+
+        ("Wlb1dR", "dR(Wlb1)", 40, -4, 4, "Wlb1dR"),
+        ("Wlb1dEta", "dEta(Wlb1)", 40, -4, 4, "Wlb1dEta"),
+        ("Wlb1dPhi", "dPhi(Wlb1)", 40, -4, 4, "Wlb1dPhi"),
+        ("Wlb1Pt", "pT(Wlb1)", 40, 0, 400, "Wlb1Pt"),
+        ("Wlb1Eta", "Eta(Wlb1)", 40, -4, 4, "Wlb1Eta"),
+        ("Wlb1Phi", "Phi(Wlb1)", 40, -4, 4, "Wlb1Phi"),
+        ("Wlb1Mass", "M(Wlb1)", 20, 0, 200, "Wlb1Mass"),
+        ("Wlb1Ht", "Ht(Wlb1)", 40, 0, 400, "Wlb1Pt"),
+        ("Wlb1Mt", "Mt(Wlb1)", 40, 0, 400, "Wlb1Pt"),
+
+        ("Wlb2dR", "dR(Wlb2)", 40, -4, 4, "Wlb2dR"),
+        ("Wlb2dEta", "dEta(Wlb2)", 40, -4, 4, "Wlb2dEta"),
+        ("Wlb2dPhi", "dPhi(Wlb2)", 40, -4, 4, "Wlb2dPhi"),
+        ("Wlb2Pt", "pT(Wlb2)", 40, 0, 400, "Wlb2Pt"),
+        ("Wlb2Eta", "Eta(Wlb2)", 40, -4, 4, "Wlb2Eta"),
+        ("Wlb2Phi", "Phi(Wlb2)", 40, -4, 4, "Wlb2Phi"),
+        ("Wlb2Mass", "M(Wlb2)", 20, 0, 200, "Wlb2Mass"),
+        ("Wlb2Ht", "Ht(Wlb2)", 40, 0, 400, "Wlb2Pt"),
+        ("Wlb2Mt", "Mt(Wlb2)", 40, 0, 400, "Wlb2Pt"),
+    ]
+    add1Dhist(hist, df, outfile, "")
+    return df
+
+
+print("tthbb")
+hist_tthbb = ROOT.TFile.Open(outdir+"hist_tthbb.root", "RECREATE")
+df_tthbb = addhists(tthbb, hist_tthbb)
+
+print("ttbb")
+hist_ttbb  = ROOT.TFile.Open(outdir+"hist_ttbb.root", "RECREATE")
+df_ttbb  = addhists(ttbb, hist_ttbb)
+
+print("ttcc")
+hist_ttcc  = ROOT.TFile.Open(outdir+"hist_ttcc.root", "RECREATE")
+df_ttcc  = addhists(ttcc, hist_ttcc)
+
+print("ttjj")
+hist_ttjj  = ROOT.TFile.Open(outdir+"hist_ttjj.root", "RECREATE")
+df_ttjj  = addhists(ttjj, hist_ttjj)
