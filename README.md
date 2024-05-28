@@ -26,7 +26,7 @@
   python train.py /indir_path/
   ```
 4. jupyter notebook
-  ipynb files should be opened on jupyter notebook
+  : ipynb files should be opened on jupyter notebook
   ```bash
   jupyter notebook
   ```
