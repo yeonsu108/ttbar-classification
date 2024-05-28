@@ -79,5 +79,3 @@ hists1 = [
 ]
 
 drawHisto(hists1, dfs, "")
-
-
